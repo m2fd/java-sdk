@@ -13,18 +13,13 @@
  */
 package com.ibm.watson.developer_cloud.http;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.google.gson.JsonObject;
 import com.ibm.watson.developer_cloud.util.RequestUtils;
 import com.ibm.watson.developer_cloud.util.Validator;
+import okhttp3.*;
 
-import okhttp3.FormBody;
-import okhttp3.HttpUrl;
-import okhttp3.MediaType;
-import okhttp3.Request;
-import okhttp3.RequestBody;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Convenience class for constructing HTTP/HTTPS requests.
@@ -186,6 +181,7 @@ public class RequestBuilder {
     for (final NameValue header : headers) {
       builder.header(header.getName(), header.getValue());
     }
+
 
     return builder.build();
   }
