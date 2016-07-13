@@ -13,49 +13,23 @@
  */
 package com.ibm.watson.developer_cloud.service;
 
-import java.io.IOException;
-import java.net.CookieManager;
-import java.net.CookiePolicy;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
 import com.google.gson.JsonObject;
-import com.ibm.watson.developer_cloud.http.HttpHeaders;
-import com.ibm.watson.developer_cloud.http.HttpMediaType;
-import com.ibm.watson.developer_cloud.http.HttpStatus;
-import com.ibm.watson.developer_cloud.http.RequestBuilder;
-import com.ibm.watson.developer_cloud.http.ResponseConverter;
-import com.ibm.watson.developer_cloud.http.ServiceCall;
-import com.ibm.watson.developer_cloud.http.ServiceCallback;
-import com.ibm.watson.developer_cloud.service.exception.BadRequestException;
-import com.ibm.watson.developer_cloud.service.exception.ConflictException;
-import com.ibm.watson.developer_cloud.service.exception.ForbiddenException;
-import com.ibm.watson.developer_cloud.service.exception.InternalServerErrorException;
-import com.ibm.watson.developer_cloud.service.exception.NotFoundException;
-import com.ibm.watson.developer_cloud.service.exception.RequestTooLargeException;
-import com.ibm.watson.developer_cloud.service.exception.ServiceResponseException;
-import com.ibm.watson.developer_cloud.service.exception.ServiceUnavailableException;
-import com.ibm.watson.developer_cloud.service.exception.TooManyRequestsException;
-import com.ibm.watson.developer_cloud.service.exception.UnauthorizedException;
-import com.ibm.watson.developer_cloud.service.exception.UnsupportedException;
+import com.ibm.watson.developer_cloud.http.*;
+import com.ibm.watson.developer_cloud.service.exception.*;
 import com.ibm.watson.developer_cloud.util.CredentialUtils;
 import com.ibm.watson.developer_cloud.util.RequestUtils;
 import com.ibm.watson.developer_cloud.util.ResponseConverterUtils;
 import com.ibm.watson.developer_cloud.util.ResponseUtils;
-
 import jersey.repackaged.jsr166e.CompletableFuture;
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.Credentials;
-import okhttp3.Headers;
-import okhttp3.HttpUrl;
-import okhttp3.JavaNetCookieJar;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
+import okhttp3.*;
 import okhttp3.Request.Builder;
-import okhttp3.Response;
+
+import java.io.IOException;
+import java.net.*;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Watson service abstract common functionality of various Watson Services. It handle authentication
@@ -79,6 +53,9 @@ public abstract class WatsonService {
   private final String name;
   private Headers defaultHeaders = null;
   private boolean skipAuthentication = false;
+  private Proxy.Type proxyType =null;
+  private String proxyHost = null;
+  private int proxyPort = 0;
 
   /** The Constant MESSAGE_CODE. */
   protected static final String MESSAGE_CODE = "code";
@@ -91,7 +68,7 @@ public abstract class WatsonService {
 
   /**
    * Instantiates a new Watson service.
-   * 
+   *
    * @param name the service name
    */
   public WatsonService(String name) {
@@ -105,6 +82,40 @@ public abstract class WatsonService {
     }
   }
 
+  /**
+   * Instantiates a new Watson service.
+   *
+   * @param name the service name
+   */
+  public WatsonService(String name,String _type, String _host,int _port) {
+    this.name = name;
+    this.apiKey = CredentialUtils.getAPIKey(name);
+    this.setProxyHostAndPort(_type,_host,_port);
+    this.client = configureHttpClient();
+    String url = CredentialUtils.getAPIUrl(name);
+    if (url != null && !url.isEmpty()) {
+      // The VCAP_SERVICES will typically contain a url. If present use it.
+      setEndPoint(url);
+    }
+  }
+
+
+  /**
+   * Defined parameters to be used to go through a proxy
+   *
+   * @param _host
+   * @param _port
+     */
+  public void setProxyHostAndPort(String _type, String _host,int _port){
+    this.proxyType = Proxy.Type.DIRECT;
+    if (_type.equals("http") || _type.equals("https")) {
+      this.proxyType = Proxy.Type.HTTP;
+    } else if (_type.equals("socks")){
+        this.proxyType = Proxy.Type.SOCKS;
+    }
+    this.proxyHost = _host;
+    this.proxyPort = _port;
+  }
 
   /**
    * Configures the HTTP client.
@@ -123,6 +134,16 @@ public abstract class WatsonService {
     builder.writeTimeout(60, TimeUnit.SECONDS);
     builder.readTimeout(90, TimeUnit.SECONDS);
 
+    if (proxyType != null) {
+      if (null != proxyHost && proxyPort != 0) {
+        try {
+          Proxy proxy = new Proxy(proxyType, InetSocketAddress.createUnresolved(proxyHost, proxyPort));
+          builder.proxy(proxy);
+        } catch (IllegalArgumentException e) {
+          LOG.log(Level.SEVERE, e.toString() + ": " + e.getMessage());
+        }
+      }
+    }
     return builder.build();
   }
 

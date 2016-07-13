@@ -13,34 +13,29 @@
  */
 package com.ibm.watson.developer_cloud.speech_to_text.v1;
 
-import java.io.File;
-import java.io.InputStream;
-import java.lang.reflect.Type;
-import java.util.Arrays;
-import java.util.List;
-
 import com.google.gson.reflect.TypeToken;
 import com.ibm.watson.developer_cloud.http.RequestBuilder;
 import com.ibm.watson.developer_cloud.http.ResponseConverter;
 import com.ibm.watson.developer_cloud.http.ServiceCall;
 import com.ibm.watson.developer_cloud.http.ServiceCallback;
 import com.ibm.watson.developer_cloud.service.WatsonService;
-import com.ibm.watson.developer_cloud.speech_to_text.v1.model.RecognizeOptions;
-import com.ibm.watson.developer_cloud.speech_to_text.v1.model.SpeechModel;
-import com.ibm.watson.developer_cloud.speech_to_text.v1.model.SpeechResults;
-import com.ibm.watson.developer_cloud.speech_to_text.v1.model.SpeechSession;
-import com.ibm.watson.developer_cloud.speech_to_text.v1.model.SpeechSessionStatus;
+import com.ibm.watson.developer_cloud.speech_to_text.v1.model.*;
 import com.ibm.watson.developer_cloud.speech_to_text.v1.util.MediaTypeUtils;
 import com.ibm.watson.developer_cloud.speech_to_text.v1.websocket.RecognizeCallback;
 import com.ibm.watson.developer_cloud.speech_to_text.v1.websocket.WebSocketManager;
 import com.ibm.watson.developer_cloud.util.RequestUtils;
 import com.ibm.watson.developer_cloud.util.ResponseConverterUtils;
 import com.ibm.watson.developer_cloud.util.Validator;
-
 import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.ws.WebSocket;
+
+import java.io.File;
+import java.io.InputStream;
+import java.lang.reflect.Type;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * The Speech to Text service uses IBM's speech recognition capabilities to convert English speech
@@ -82,6 +77,14 @@ public class SpeechToText extends WatsonService {
    */
   public SpeechToText() {
     super(SERVICE_NAME);
+    setEndPoint(URL);
+  }
+
+  /**
+   * Instantiates a new Speech to Text service with proxy
+   */
+  public SpeechToText(String _type, String _host,int _port ) {
+    super(SERVICE_NAME,_type,_host,_port);
     setEndPoint(URL);
   }
 
