@@ -25,7 +25,10 @@ import okhttp3.*;
 import okhttp3.Request.Builder;
 
 import java.io.IOException;
-import java.net.*;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
