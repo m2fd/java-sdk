@@ -81,14 +81,6 @@ public class SpeechToText extends WatsonService {
   }
 
   /**
-   * Instantiates a new Speech to Text service with proxy
-   */
-  public SpeechToText(String _type, String _host,int _port ) {
-    super(SERVICE_NAME,_type,_host,_port);
-    setEndPoint(URL);
-  }
-
-  /**
    * Instantiates a new Speech to Text service by username and password.
    * @param username the username
    * @param password the password

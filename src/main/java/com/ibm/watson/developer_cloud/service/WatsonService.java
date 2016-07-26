@@ -1,11 +1,11 @@
 /**
  * Copyright 2015 IBM Corp. All Rights Reserved.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License. You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed under the License
  * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
  * or implied. See the License for the specific language governing permissions and limitations under
@@ -37,7 +37,7 @@ import java.util.logging.Logger;
 /**
  * Watson service abstract common functionality of various Watson Services. It handle authentication
  * and default url
- * 
+ *
  * @see <a href="http://www.ibm.com/smarterplanet/us/en/ibmwatson/developercloud/"> IBM Watson
  *      Developer Cloud</a>
  */
@@ -56,9 +56,7 @@ public abstract class WatsonService {
   private final String name;
   private Headers defaultHeaders = null;
   private boolean skipAuthentication = false;
-  private Proxy.Type proxyType =null;
-  private String proxyHost = null;
-  private int proxyPort = 0;
+  private static ProxyConfiguration proxyConfiguration = null;
 
   /** The Constant MESSAGE_CODE. */
   protected static final String MESSAGE_CODE = "code";
@@ -85,44 +83,10 @@ public abstract class WatsonService {
     }
   }
 
-  /**
-   * Instantiates a new Watson service.
-   *
-   * @param name the service name
-   */
-  public WatsonService(String name,String _type, String _host,int _port) {
-    this.name = name;
-    this.apiKey = CredentialUtils.getAPIKey(name);
-    this.setProxyHostAndPort(_type,_host,_port);
-    this.client = configureHttpClient();
-    String url = CredentialUtils.getAPIUrl(name);
-    if (url != null && !url.isEmpty()) {
-      // The VCAP_SERVICES will typically contain a url. If present use it.
-      setEndPoint(url);
-    }
-  }
-
-
-  /**
-   * Defined parameters to be used to go through a proxy
-   *
-   * @param _host
-   * @param _port
-     */
-  public void setProxyHostAndPort(String _type, String _host,int _port){
-    this.proxyType = Proxy.Type.DIRECT;
-    if (_type.equals("http") || _type.equals("https")) {
-      this.proxyType = Proxy.Type.HTTP;
-    } else if (_type.equals("socks")){
-        this.proxyType = Proxy.Type.SOCKS;
-    }
-    this.proxyHost = _host;
-    this.proxyPort = _port;
-  }
 
   /**
    * Configures the HTTP client.
-   * 
+   *
    * @return the HTTP client
    */
   protected OkHttpClient configureHttpClient() {
@@ -137,16 +101,26 @@ public abstract class WatsonService {
     builder.writeTimeout(60, TimeUnit.SECONDS);
     builder.readTimeout(90, TimeUnit.SECONDS);
 
-    if (proxyType != null) {
-      if (null != proxyHost && proxyPort != 0) {
-        try {
-          Proxy proxy = new Proxy(proxyType, InetSocketAddress.createUnresolved(proxyHost, proxyPort));
-          builder.proxy(proxy);
-        } catch (IllegalArgumentException e) {
-          LOG.log(Level.SEVERE, e.toString() + ": " + e.getMessage());
-        }
+    if (proxyConfiguration != null) {
+
+      builder.proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(
+              proxyConfiguration.getHostname(), proxyConfiguration.getPort())));
+
+      if (proxyConfiguration.getCredentials() != null) {
+
+        Authenticator authenticator = new Authenticator() {
+          @Override
+          public Request authenticate(Route route, Response response)
+                  throws IOException {
+            return response.request().newBuilder()
+                    .header("Proxy-Authorization", proxyConfiguration.getCredentials()).build();
+          }
+        };
+        builder.proxyAuthenticator(authenticator);
+
       }
     }
+
     return builder.build();
   }
 
@@ -264,8 +238,8 @@ public abstract class WatsonService {
 
   /**
    * Gets the API key.
-   * 
-   * 
+   *
+   *
    * @return the API key
    */
   protected String getApiKey() {
@@ -274,8 +248,8 @@ public abstract class WatsonService {
 
   /**
    * Gets the API end point.
-   * 
-   * 
+   *
+   *
    * @return the API end point
    */
   public String getEndPoint() {
@@ -284,28 +258,28 @@ public abstract class WatsonService {
 
   /**
    * Gets an authorization token that can be use to authorize API calls.
-   * 
-   * 
+   *
+   *
    * @return the token
    */
   public ServiceCall<String> getToken() {
     HttpUrl url = HttpUrl.parse(getEndPoint()).newBuilder().setPathSegment(0, AUTHORIZATION).build();
     Request request = RequestBuilder.get(url + PATH_AUTHORIZATION_V1_TOKEN)
-        .header(HttpHeaders.ACCEPT, HttpMediaType.TEXT_PLAIN).query(URL, getEndPoint()).build();
+            .header(HttpHeaders.ACCEPT, HttpMediaType.TEXT_PLAIN).query(URL, getEndPoint()).build();
 
     return createServiceCall(request, ResponseConverterUtils.getString());
   }
 
   /**
    * Gets the error message from a JSON response
-   * 
+   *
    * <pre>
    * {
    *   code: 400
    *   error: 'bad request'
    * }
    * </pre>
-   * 
+   *
    * @param response the HTTP response
    * @return the error message from the JSON object
    */
@@ -330,7 +304,7 @@ public abstract class WatsonService {
 
   /**
    * Gets the name.
-   * 
+   *
    * @return the name
    */
   public String getName() {
@@ -340,7 +314,7 @@ public abstract class WatsonService {
 
   /**
    * Sets the API key.
-   * 
+   *
    * @param apiKey the new API key
    */
   public void setApiKey(String apiKey) {
@@ -363,7 +337,7 @@ public abstract class WatsonService {
 
   /**
    * Sets the end point.
-   * 
+   *
    * @param endPoint the new end point
    */
   public void setEndPoint(final String endPoint) {
@@ -376,7 +350,7 @@ public abstract class WatsonService {
 
   /**
    * Sets the username and password.
-   * 
+   *
    * @param username the username
    * @param password the password
    */
@@ -386,7 +360,7 @@ public abstract class WatsonService {
 
   /**
    * Set the default headers to be used on every HTTP request.
-   * 
+   *
    * @param headers name value pairs of headers
    */
   public void setDefaultHeaders(Map<String, String> headers) {
@@ -399,18 +373,18 @@ public abstract class WatsonService {
 
   /*
    * (non-Javadoc)
-   * 
+   *
    * @see java.lang.Object#toString()
    */
   @Override
   public String toString() {
     final StringBuilder builder = new StringBuilder()
-      .append(name)
-      .append(" [");
+            .append(name)
+            .append(" [");
 
     if (endPoint != null) {
       builder.append("endPoint=")
-        .append(endPoint);
+              .append(endPoint);
     }
 
     return builder.append(']').toString();
@@ -433,7 +407,7 @@ public abstract class WatsonService {
     // Get the error message and create the exception
     final String error = getErrorMessage(response);
     LOG.log(Level.SEVERE, response.request().method() + " " + response.request().url().toString() + ", status: "
-        + response.code() + ", error: " + error);
+            + response.code() + ", error: " + error);
 
     switch (response.code()) {
       case HttpStatus.BAD_REQUEST: // HTTP 400
@@ -450,7 +424,7 @@ public abstract class WatsonService {
         throw new ConflictException(error != null ? error : "", response);
       case HttpStatus.REQUEST_TOO_LONG: // HTTP 413
         throw new RequestTooLargeException(error != null ? error
-            : "Request too large: The request entity is larger than the server is able to process", response);
+                : "Request too large: The request entity is larger than the server is able to process", response);
       case HttpStatus.UNSUPPORTED_MEDIA_TYPE: // HTTP 415
         throw new UnsupportedException(error != null ? error : "Unsupported Media Type", response);
       case HttpStatus.TOO_MANY_REQUESTS: // HTTP 429
@@ -466,10 +440,19 @@ public abstract class WatsonService {
 
   /**
    * Sets the skip authentication.
-   * 
+   *
    * @param skipAuthentication the new skip authentication
    */
   public void setSkipAuthentication(boolean skipAuthentication) {
     this.skipAuthentication = skipAuthentication;
+  }
+
+  /**
+   * Sets the proxy configuration.
+   *
+   * @param proxyConfiguration	the proxy configuration
+   */
+  public static void setProxyConfiguration(ProxyConfiguration proxyConfiguration) {
+    WatsonService.proxyConfiguration = proxyConfiguration;
   }
 }
