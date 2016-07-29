@@ -51,7 +51,7 @@ public abstract class WatsonService {
   private static final String BASIC = "Basic ";
   private static final Logger LOG = Logger.getLogger(WatsonService.class.getName());
   private String apiKey;
-  private final OkHttpClient client;
+  private OkHttpClient client;
   private String endPoint;
   private final String name;
   private Headers defaultHeaders = null;
@@ -83,8 +83,7 @@ public abstract class WatsonService {
     }
   }
 
-
-  /**
+   /**
    * Configures the HTTP client.
    *
    * @return the HTTP client
@@ -454,5 +453,9 @@ public abstract class WatsonService {
    */
   public static void setProxyConfiguration(ProxyConfiguration proxyConfiguration) {
     WatsonService.proxyConfiguration = proxyConfiguration;
+  }
+
+  public void reconfigureHttpClient() {
+    this.client = configureHttpClient();
   }
 }
